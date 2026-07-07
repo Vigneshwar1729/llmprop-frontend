@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { ArrowRight, Loader2, FlaskConical, AlertCircle } from "lucide-react";
+import { Loader2, FlaskConical, AlertCircle } from "lucide-react";
 
 const EXAMPLES = [
-  { label: "Silicon (Si)", value: "Si\nFd-3m (227)\na=5.431 Å" },
-  { label: "GaAs", value: "GaAs\nF-43m (216)\na=5.653 Å" },
-  { label: "TiO₂", value: "TiO2\nP42/mnm (136)\na=4.594 Å, c=2.959 Å" },
+  {
+    label: "Silicon (Si)",
+    value: "Si crystallizes in the Fd-3m (227) space group. Si(1) is bonded to four equivalent Si(1) atoms to form corner-sharing SiSi4 tetrahedra. All Si(1)-Si(1) bond lengths are 2.37 Å."
+  },
+  {
+    label: "GaAs",
+    value: "GaAs crystallizes in the F-43m (216) space group. Ga(1) is bonded to four equivalent As(1) atoms to form corner-sharing GaAs4 tetrahedra. All Ga(1)-As(1) bond lengths are 2.45 Å."
+  },
+  {
+    label: "TiO₂",
+    value: "TiO2 crystallizes in the P4_2/mnm (136) space group. Ti(1) is bonded to six O(1) atoms to form TiO6 octahedra. There are two shorter Ti(1)-O(1) bond lengths of 1.95 Å and four longer bond lengths of 1.98 Å."
+  },
 ];
 
 interface PredictionResult {
@@ -26,54 +35,72 @@ const PredictorSection = () => {
     setError(null);
 
     try {
-      const response = await fetch("https://vignesh1729-llmprop-demo.hf.space/api/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ data: [input] }),
-      });
+      console.log("Sending request to HuggingFace...");
+
+      const response = await fetch(
+        "https://vignesh1729-llmprop-demo.hf.space/api/predict",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ data: [input] }),
+        }
+      );
+
+      console.log("Response status:", response.status);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status} Error`);
+        throw new Error(`Server error: HTTP ${response.status}`);
       }
 
       const data = await response.json();
       console.log("API Response:", data);
-      const predictionText = String(data.data[0] ?? "");
-      const detailsText = String(data.data[1] ?? "");
 
-// Parse band gap value
-      const bandGapMatch = predictionText.match(/[\d.]+/);
-      const bandGap = bandGapMatch ? bandGapMatch[0] : "0.0000";
+      const predictionText = String(data.data?.[0] ?? "");
+      const detailsText = String(data.data?.[1] ?? "");
 
-// Parse material type and confidence
+      console.log("Prediction:", predictionText);
+      console.log("Details:", detailsText);
+
+      // Parse band gap value
+      const bandGapMatch = predictionText.match(/[-]?[\d.]+/);
+      const bandGapRaw = bandGapMatch ? parseFloat(bandGapMatch[0]) : 0;
+      const bandGap = Math.abs(bandGapRaw).toFixed(4);
+
+      // Parse material type and confidence
       const lines = detailsText.split("\n");
-      const materialType = lines[0]?.replace("Material Type: ", "") ?? "Unknown";
-      const confidenceText = lines[1]?.replace("Confidence: ", "") ?? "Low";
-      const confidenceNum = confidenceText === "High" ? 95 : confidenceText === "Medium" ? 75 : 50;
+      const materialType = lines[0]?.replace("Material Type: ", "").trim() ?? "Unknown";
+      const confidenceText = lines[1]?.replace("Confidence: ", "").trim() ?? "Low";
+      const confidenceNum =
+        confidenceText === "High" ? 95 :
+        confidenceText === "Medium" ? 75 : 50;
 
       setResult({
         value: `${bandGap} eV`,
         classification: materialType,
-        confidence: confidenceNum
-  });
+        confidence: confidenceNum,
+      });
+
     } catch (err: any) {
       console.error("Prediction failed:", err);
-      setError(err.message || "Failed to connect to the prediction backend.");
+      setError(
+        typeof err?.message === "string"
+          ? err.message
+          : "Failed to connect to the prediction backend. The model may be waking up — please try again in 30 seconds."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const getBadgeStyle = (cls: string) => {
-    if (cls.includes('Metal')) {
-      return { backgroundColor: 'rgba(100, 116, 139, 0.08)', color: '#64748b' };
-    } else if (cls.includes('Insulator')) {
-      return { backgroundColor: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' };
+    if (cls.includes("Metal")) {
+      return { backgroundColor: "rgba(100, 116, 139, 0.08)", color: "#64748b" };
+    } else if (cls.includes("Insulator")) {
+      return { backgroundColor: "rgba(239, 68, 68, 0.08)", color: "#ef4444" };
     } else {
-      return { backgroundColor: 'rgba(14, 165, 233, 0.08)', color: '#0ea5e9' };
+      return { backgroundColor: "rgba(14, 165, 233, 0.08)", color: "#0ea5e9" };
     }
   };
 
@@ -81,7 +108,9 @@ const PredictorSection = () => {
     <section id="predictor" className="py-28 px-6 reveal">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
-          <span className="text-[10px] font-bold text-[#0ea5e9] bg-[#0ea5e9]/10 px-3 py-1 rounded-full uppercase tracking-wider">Predictor</span>
+          <span className="text-[10px] font-bold text-[#0ea5e9] bg-[#0ea5e9]/10 px-3 py-1 rounded-full uppercase tracking-wider">
+            Predictor
+          </span>
           <h2 className="text-4xl font-extrabold text-[#1a1f26] tracking-[-1.2px] mt-4 mb-3">
             Try It Now
           </h2>
@@ -99,6 +128,7 @@ const PredictorSection = () => {
                 onClick={() => {
                   setInput(ex.value);
                   setError(null);
+                  setResult(null);
                 }}
                 className="text-xs px-3.5 py-1.5 rounded-full bg-[#f1f5f9] text-[#475569] hover:bg-[#0ea5e9]/10 hover:text-[#0ea5e9] transition-all duration-200 font-semibold"
               >
@@ -121,7 +151,7 @@ const PredictorSection = () => {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Paste crystal structure data (CIF, POSCAR) or enter formula..."
+            placeholder="Paste a crystal structure description e.g. Cu crystallizes in the Fm-3m (225) space group. Cu(1) is bonded to twelve equivalent Cu(1) atoms..."
             rows={5}
             className="w-full rounded-xl bg-[#fafbfa] border border-[#e2e8f0] px-4 py-3 text-sm text-[#1a1f26] placeholder:text-[#8a99ad]/60 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]/30 focus:border-[#0ea5e9]/50 transition-all resize-none font-mono"
           />
@@ -138,9 +168,7 @@ const PredictorSection = () => {
                 Analyzing Structure...
               </>
             ) : (
-              <>
-                Predict Band Gap →
-              </>
+              <>Predict Band Gap →</>
             )}
           </button>
 
@@ -149,7 +177,9 @@ const PredictorSection = () => {
             <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-5 flex items-start gap-3 text-red-600 animate-fade-in">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-xs uppercase tracking-wider mb-1">Prediction Error</h4>
+                <h4 className="font-bold text-xs uppercase tracking-wider mb-1">
+                  Prediction Error
+                </h4>
                 <p className="text-xs font-semibold text-red-500">{error}</p>
               </div>
             </div>
@@ -162,19 +192,19 @@ const PredictorSection = () => {
                 <div className="w-10 h-10 rounded-xl bg-[#0ea5e9]/10 text-[#0ea5e9] flex items-center justify-center shrink-0 mt-0.5">
                   <FlaskConical className="w-5 h-5" />
                 </div>
-                
+
                 <div className="grow">
                   <p className="text-[10px] font-bold text-[#8a99ad] uppercase tracking-wider mb-1">
                     Predicted Band Gap
                   </p>
-                  
+
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-3xl font-extrabold text-[#1a1f26] tracking-tight">
                       {result.value}
                     </span>
                     <span className="text-xs text-[#8a99ad] font-semibold">eV</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 mt-3">
                     <span
                       className="inline-block text-[10px] font-bold px-2.5 py-1 rounded-md"
