@@ -38,7 +38,7 @@ const PredictorSection = () => {
       console.log("Sending request to HuggingFace...");
 
       const response = await fetch(
-        "https://vignesh1729-llmprop-demo.hf.space/api/predict",
+        "https://vignesh1729-llmprop-demo.hf.space/run/predict",
         {
           method: "POST",
           headers: {
