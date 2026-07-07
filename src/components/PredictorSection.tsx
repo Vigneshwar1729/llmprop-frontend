@@ -40,7 +40,25 @@ const PredictorSection = () => {
       }
 
       const data = await response.json();
-      setResult(data.data[0]);
+      console.log("API Response:", data);
+      const predictionText = String(data.data[0] ?? "");
+      const detailsText = String(data.data[1] ?? "");
+
+// Parse band gap value
+      const bandGapMatch = predictionText.match(/[\d.]+/);
+      const bandGap = bandGapMatch ? bandGapMatch[0] : "0.0000";
+
+// Parse material type and confidence
+      const lines = detailsText.split("\n");
+      const materialType = lines[0]?.replace("Material Type: ", "") ?? "Unknown";
+      const confidenceText = lines[1]?.replace("Confidence: ", "") ?? "Low";
+      const confidenceNum = confidenceText === "High" ? 95 : confidenceText === "Medium" ? 75 : 50;
+
+      setResult({
+        value: `${bandGap} eV`,
+        classification: materialType,
+        confidence: confidenceNum
+  });
     } catch (err: any) {
       console.error("Prediction failed:", err);
       setError(err.message || "Failed to connect to the prediction backend.");
