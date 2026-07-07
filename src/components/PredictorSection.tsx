@@ -31,7 +31,7 @@ const PredictorSection = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ input: input }),
+        body: JSON.stringify({ data: [input] }),
       });
 
       if (!response.ok) {
@@ -40,7 +40,7 @@ const PredictorSection = () => {
       }
 
       const data = await response.json();
-      setResult(data.prediction);
+      setResult(data.data[0]);
     } catch (err: any) {
       console.error("Prediction failed:", err);
       setError(err.message || "Failed to connect to the prediction backend.");
